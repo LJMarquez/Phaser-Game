@@ -26,6 +26,8 @@ var cursors;
 var gameOver = false;
 let enemyCount = 0;
 let jumped = false;
+let hasDoubleJump = true;
+let facingLeft = false;
 
 function preload ()
 {
@@ -37,10 +39,14 @@ function preload ()
     'assets/krool-jump.png',
     { frameWidth: 50, frameHeight: 48}
     );
-    // this.load.spritesheet('dude',
-    //     'assets/test.png',
-    //     { frameWidth: 32, frameHeight: 48 }
-    // );
+    this.load.spritesheet('jumpL', 
+    'assets/jumpL.png',
+    { frameWidth: 50, frameHeight: 48}
+    );
+    this.load.spritesheet('jumpR', 
+    'assets/jumpR.png',
+    { frameWidth: 50, frameHeight: 48}
+    );
     this.load.spritesheet('krool', 
     'assets/krool-idle.png',
     { frameWidth: 50, frameHeight: 48}
@@ -76,7 +82,7 @@ function create ()
 
     player.setBounce(0.2);
     player.setCollideWorldBounds(true);
-    player.body.setGravityY(100);
+    player.body.setGravityY(200);
 
     this.anims.create({
         key: 'left',
@@ -99,10 +105,17 @@ function create ()
     });
 
     this.anims.create({
-        key: 'up',
-        frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 8 }),
+        key: 'jumpL',
+        frames: this.anims.generateFrameNumbers('jumpL', { start: 0, end: 9 }),
         frameRate: 10,
-        repeat: 1
+        repeat: 0
+    });
+
+    this.anims.create({
+        key: 'jumpR',
+        frames: this.anims.generateFrameNumbers('jumpR', { start: 0, end: 9 }),
+        frameRate: 13,
+        repeat: 0
     });
 
     cursors = this.input.keyboard.createCursorKeys();
@@ -170,46 +183,91 @@ function create ()
 
 function update ()
 {
+        if (facingLeft) {
+            player.setFlipX(true);
+        } else {
+            player.setFlipX(false);
+        }
 
+        if (cursors.left.isUp &&
+            cursors.right.isUp &&
+            cursors.up.isUp &&
+            cursors.down.isUp &&
+            jumped == false) {
+                player.anims.play('turn', true);
+            }
         if (cursors.left.isDown) {
             player.setVelocityX(-160);
-            if (gameOver == false) {
-                player.anims.play('left', true);
-            }
-        } else if (cursors.right.isDown) {
-            player.setVelocityX(160);
-            if (gameOver == false) {
+            if (gameOver == false && jumped == false) {
                 player.anims.play('right', true);
             }
-        // } else if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
-            // if (player.body.touching.down) {
-                // player.anims.play('up', true);
-                // player.setVelocityY(-330);
-            // }
+            facingLeft = true;
+        } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (gameOver == false && jumped == false) {
+                player.anims.play('right', true);
+            }
+            facingLeft = false;
         } else {
             player.setVelocityX(0);
-            player.anims.play('turn');
         }
     
         if (cursors.up.isDown && player.body.touching.down) {
             player.setVelocityY(-350);
+            player.anims.play('jumpR', true);
+            setTimeout(function () {
+                player.anims.play('turn', true);
+            }, 760)
         }
 
-        if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
-            let jumped = true;
+        if (cursors.down.isDown && !player.body.touching.down) {
+            // player.setVelocityY(100);
+            if (player.body.velocity.y < 0) {
+                player.setVelocityY(player.body.velocity.y *= -1.1);
+            } else {
+                player.setVelocityY(player.body.velocity.y *= 1.1);
+            }
         }
 
-        if (jumped) {
-            player.anims.play('up', true);
+        if (Phaser.Input.Keyboard.JustDown(cursors.up) && !player.body.touching.down) {
+            if (hasDoubleJump) {
+                player.setVelocityY(-300);
+                player.anims.play('jumpR', true);
+                setTimeout(function () {
+                    player.anims.play('turn', true);
+                }, 760)
+                hasDoubleJump = false;
+            }
+        }
+        // if (cursors.up.isDown && !player.body.touching.down) {
+        //     if (hasDoubleJump) {
+        //         player.setVelocityY(-550);
+        //         hasDoubleJump = false;
+        //     }
+        // }
+
+        if (Phaser.Input.Keyboard.JustDown(cursors.left)) {
+            facingLeft = true;
+            console.log("left");
         }
 
-    // if (cursors.up.isDown) {
-    //     player.anims.play('up', true);
-    // }
-    // cursors.up.onDown.play('up', true);
-    // if (cursors.up.isDown && player.body.touching.down != false) {
-    //     player.anims.play('up', true);
-    // }
+        if (player.body.touching.down) {
+            player.setBounceY(0);
+            hasDoubleJump = true;
+            jumped = false;
+        }
+
+        // if (Phaser.Input.Keyboard.JustDown(cursors.up) && player.body.touching.down) {
+            // player.anims.play('jump', true);
+        // }
+
+        if (player.body.velocity.y != 0) {
+            jumped = true;
+        }
+
+        // if (jumped) {
+
+        // }
 
     enemies.children.iterate(function (child) {
         if (child.getBounds().x <= 0 || child.getBounds().x >= game.config.width) {
@@ -242,6 +300,7 @@ function update ()
     function playerOnEnemy(player, enemy) {
         if (player.body.touching.down && player.y < enemy.y) {
             enemy.disableBody(true, true);
+            player.setVelocityY(-200);
         } else {
             this.physics.pause();
             player.setTint(0xff0000);
@@ -252,6 +311,7 @@ function update ()
         if (enemies.countActive(true) === 0) {
             enemyCount++;
             enemies.repeat = enemyCount;
+
             // enemies.children.iterate(function (child) {
             //     child.enableBody(true, Phaser.Math.Between(0, game.config.width), 0, true, true);
             // });
