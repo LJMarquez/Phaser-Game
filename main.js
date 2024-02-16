@@ -20,9 +20,12 @@ var game = new Phaser.Game(config);
 var platforms;
 var score = 0;
 var scoreText;
+var winText;
 var bombs;
 var cursors;
-var GameOver = false;
+var gameOver = false;
+let enemyCount = 0;
+let jumped = false;
 
 function preload ()
 {
@@ -99,7 +102,7 @@ function create ()
         key: 'up',
         frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 8 }),
         frameRate: 10,
-        repeat: 0
+        repeat: 1
     });
 
     cursors = this.input.keyboard.createCursorKeys();
@@ -116,7 +119,7 @@ function create ()
 
     enemies = this.physics.add.group({
         key: 'enemy',
-        repeat: 1,
+        repeat: enemyCount,
         setXY: { x: 12, y: 0, stepX: 70 }
     });
 
@@ -148,7 +151,7 @@ function create ()
 
     bombs = this.physics.add.group();
     
-    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000'})
+    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000'});
 
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(stars, platforms);
@@ -167,30 +170,39 @@ function create ()
 
 function update ()
 {
-    // if (gameOver) {
-    //     return;
-    // }
 
-    if (cursors.left.isDown) {
-        player.setVelocityX(-160);
-        player.anims.play('left', true);
-    } else if (cursors.right.isDown) {
-        player.setVelocityX(160);
-        player.anims.play('right', true);
-    // } else if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
-        // if (player.body.touching.down) {
-            // player.anims.play('up', true);
-            // player.setVelocityY(-330);
-        // }
-    } else {
-        player.setVelocityX(0);
-        player.anims.play('turn');
-    }
+        if (cursors.left.isDown) {
+            player.setVelocityX(-160);
+            if (gameOver == false) {
+                player.anims.play('left', true);
+            }
+        } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (gameOver == false) {
+                player.anims.play('right', true);
+            }
+        // } else if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
+            // if (player.body.touching.down) {
+                // player.anims.play('up', true);
+                // player.setVelocityY(-330);
+            // }
+        } else {
+            player.setVelocityX(0);
+            player.anims.play('turn');
+        }
+    
+        if (cursors.up.isDown && player.body.touching.down) {
+            player.setVelocityY(-350);
+        }
 
-    if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-350);
-        player.anims.play('up', true);
-    }
+        if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
+            let jumped = true;
+        }
+
+        if (jumped) {
+            player.anims.play('up', true);
+        }
+
     // if (cursors.up.isDown) {
     //     player.anims.play('up', true);
     // }
@@ -200,7 +212,6 @@ function update ()
     // }
 
     enemies.children.iterate(function (child) {
-        console.log(child.getBounds());
         if (child.getBounds().x <= 0 || child.getBounds().x >= game.config.width) {
             child.setVelocityX(child.body.velocity.x *= -1);
             child.body.x += 5; 
@@ -237,6 +248,84 @@ function update ()
             player.anims.play('turn');
             gameOver = true;
         }
+
+        if (enemies.countActive(true) === 0) {
+            enemyCount++;
+            enemies.repeat = enemyCount;
+            // enemies.children.iterate(function (child) {
+            //     child.enableBody(true, Phaser.Math.Between(0, game.config.width), 0, true, true);
+            // });
+
+            // enemies.clear(true, true);
+
+            // enemies = this.physics.add.group({
+            //     key: 'enemy',
+            //     repeat: enemyCount,
+            //     setXY: { x: 12, y: 0, stepX: 70 }
+            // });
+    
+            // enemies.children.iterate(function (child) {
+            //     child.setCollideWorldBounds(true);
+            //     child.setBounceY(Phaser.Math.FloatBetween(0.1, 0.4));
+            // });
+
+            enemies.clear(true, true);
+
+            
+            if (enemyCount == 1) {
+                winText = this.add.text(100, 100, 'YOU WIN!!!!', { fontSize: '50px', fill: '#fff'});
+            } else {
+                enemies = this.physics.add.group({
+                    key: 'enemy',
+                    repeat: enemyCount,
+                    setXY: { x: (Phaser.Math.Between(0, game.config.width)), y: 0, stepX: 70 }
+                });
+                
+                enemies.children.iterate(function (child) {
+                    child.setCollideWorldBounds(true);
+                    this.physics.add.collider(enemies, platforms);
+                    this.physics.add.collider(player, enemies, playerOnEnemy, null, this);
+                    child.setBounceY(Phaser.Math.FloatBetween(0.1, 0.4));
+        
+                    let directionLeft;
+                    let directionBool = Math.floor(Math.random() * 2);
+                    if (directionBool == 0) {
+                    directionLeft = false;
+                    } else {
+                        directionLeft = true;
+                    }
+                    child.setBounceY(Phaser.Math.FloatBetween(0.1, 0.4));
+                    let randomTime = Math.floor(Math.random() * 1000) + 1000;
+                    setInterval(function () {
+                        let speed = Math.floor(Math.random() * 200) + 50;
+                        // let speed = -100;
+                        directionLeft = !directionLeft;
+                        if (directionLeft) {
+                            child.setVelocityX(speed *= -1);
+                            child.anims.play('left', true);
+                        } else {
+                            child.setVelocityX(speed);
+                            child.anims.play('right', true);
+        
+                        }
+                    }, randomTime);
+                }, this);
+        }
+
+
+        }
+
+        // if (enemies.countActive(true) === 0) {
+        //     enemyCount++;
+        //     for (let i = 0; i < enemyCount; i++) {
+        //         // Create new enemies based on the updated enemyCount
+        //         let newEnemy = enemies.create(Phaser.Math.Between(0, game.config.width), 0, 'enemy');
+        //         // Set properties for the new enemy
+        //         newEnemy.setCollideWorldBounds(true);
+        //         newEnemy.setBounceY(Phaser.Math.FloatBetween(0.1, 0.4));
+        //     }
+        //     console.log(enemyCount);
+        // }
     }
 
 function hitBomb(player, bomb) {
