@@ -426,6 +426,24 @@ function update ()
                 player.setVelocityX(0);
             }
         
+            if (cursors.shift.isDown && cursors.right.isDown && isShooting == false) {
+                player.setVelocityX(260);
+                if (gameOver == false && jumped == false) {
+                    player.anims.play('playerWalk', true);
+                }
+            }
+            if (cursors.shift.isDown && cursors.left.isDown && isShooting == false) {
+                player.setVelocityX(-260);
+                if (gameOver == false && jumped == false) {
+                    player.anims.play('playerWalk', true);
+                }
+            }
+            if (cursors.shift.isDown && isShooting == false) {
+                player.anims.timeScale = 2;
+            } else {
+                player.anims.timeScale = 1;
+            }
+
             if (cursors.up.isDown && player.body.touching.down) {
                 player.setVelocityY(-350);
                 player.anims.play('playerJump', true);
@@ -655,7 +673,7 @@ function destroyCannonBall(cannonBall, platform) {
 }
 
 function populateEnemies(scene) {
-     if (enemyCount == 7) {
+     if (enemyCount == 3) {
         bossActive = true;
         platforms.children.iterate(function (child) {
             child.disableBody(true, true);
@@ -778,7 +796,7 @@ function cannonBallOnBoss(cannonball, scene) {
             player.anims.play('playerTaunt1', true);
             player.setVelocityX(0);
             boss.setVelocityX(0);
-            winText = this.add.text(game.config.width / 2, game.config.height / 2, 'YOU LOSE', { fontSize: '100px', fill: '#00ff00', backgroundColor: '#ff0000', padding: { x: 20, y: 10 }});
+            winText = this.add.text(game.config.width / 2, game.config.height / 2, 'YOU WIN', { fontSize: '100px', fill: '#00ff00', backgroundColor: '0x00FF00', padding: { x: 20, y: 10 }});
         } else {
             let bossInterval = boss.getData('bossInterval');
             clearInterval(bossInterval);
