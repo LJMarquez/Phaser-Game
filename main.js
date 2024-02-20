@@ -673,7 +673,7 @@ function destroyCannonBall(cannonBall, platform) {
 }
 
 function populateEnemies(scene) {
-     if (enemyCount == 3) {
+     if (enemyCount == 5) {
         bossActive = true;
         platforms.children.iterate(function (child) {
             child.disableBody(true, true);
