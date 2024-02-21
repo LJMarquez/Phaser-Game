@@ -46,6 +46,8 @@ let bossHealth = 3;
 let bossDown = true;
 let bossInterval;
 let directionLeftBoss;
+let hasDoubleShot = false;
+let powerUpSoundPlayed = false;
 
 function preload ()
 {
@@ -138,6 +140,24 @@ function preload ()
     'assets/explosion.png',
     { frameWidth: 100, frameHeight: 100}
     );
+
+    this.load.audio('cannonSound', 'assets/cannon.mp3');
+    this.load.audio('collectSound', 'assets/collect.mp3');
+    this.load.audio('enemyScream', 'assets/enemy-scream.mp3');
+    this.load.audio('explosionSound', 'assets/explosion.mp3');
+    this.load.audio('playerScream', 'assets/player-scream.mp3');
+    this.load.audio('powerUp', 'assets/power-up.mp3');
+    this.load.audio('title', 'assets/title.mp3');
+    this.load.audio('level', 'assets/level.mp3');
+    this.load.audio('bossLevel', 'assets/boss.mp3');
+    this.load.audio('win', 'assets/win.mp3');
+
+
+
+    
+
+
+
 }
 
 function create ()
@@ -341,6 +361,10 @@ function create ()
         frames: this.anims.generateFrameNumbers('cannonball', { frame: 0}),
         frameRate: 20
     });
+    let titleSound = this.sound.add('title');
+    let levelSound = this.sound.add('level');
+
+    levelSound.play();
 
     cursors = this.input.keyboard.createCursorKeys();
 
@@ -426,13 +450,13 @@ function update ()
                 player.setVelocityX(0);
             }
         
-            if (cursors.shift.isDown && cursors.right.isDown && isShooting == false) {
+            if (cursors.shift.isDown && cursors.right.isDown && isShooting == false && player.body.touching.down) {
                 player.setVelocityX(260);
                 if (gameOver == false && jumped == false) {
                     player.anims.play('playerWalk', true);
                 }
             }
-            if (cursors.shift.isDown && cursors.left.isDown && isShooting == false) {
+            if (cursors.shift.isDown && cursors.left.isDown && isShooting == false && player.body.touching.down) {
                 player.setVelocityX(-260);
                 if (gameOver == false && jumped == false) {
                     player.anims.play('playerWalk', true);
@@ -463,11 +487,7 @@ function update ()
                     player.setVelocityY(400);
                     player.body.setGravityY(200);
                 }, 200)
-                // if (player.body.velocity.y < 0) {
-                //     player.setVelocityY(player.body.velocity.y *= -1.1);
-                // } else {
-                //     player.setVelocityY(player.body.velocity.y *= 1.1);
-                // }
+
             }
     
             if (Phaser.Input.Keyboard.JustDown(cursors.up) && !player.body.touching.down) {
@@ -483,10 +503,6 @@ function update ()
                     hasDoubleJump = false;
                 }
             }
-    
-            // if (Phaser.Input.Keyboard.JustDown(cursors.left)) {
-            //     facingLeft = true;
-            // }
     
             if (player.body.touching.down) {
                 player.setBounceY(0);
@@ -507,6 +523,8 @@ function update ()
                 const currentAnimKey = player.anims.currentAnim.key;
                 player.anims.play('playerShoot', true);
                 shootCannon(player);
+                let cannonSound = this.sound.add('cannonSound');
+                cannonSound.play();
                 lastShotTime = this.time.now;
                 player.once('animationcomplete', function (animation) {
                     if (animation.key === 'playerShoot') {
@@ -544,6 +562,15 @@ function update ()
                 }
             }
 
+            if (score >= 1000) {
+                hasDoubleShot = true;
+                if (powerUpSoundPlayed == false) {
+                    powerUpSoundPlayed = true;
+                    let powerUp = this.sound.add('powerUp');
+                    powerUp.play();
+                }
+            }
+
         }
 
     }
@@ -557,9 +584,13 @@ function update ()
             child.setVelocityX(150);
             child.setFlipX(false);
         }
-        // if (child.getData('dead')) {
-        //     child.setVelocityX(0);
-        // }
+        if (!child.body.touching.down) {
+            child.anims.play('enemyJump', true);
+        } else {
+            if (gameOver == false) {
+                child.anims.play('enemyWalk', true);
+            }
+        }
     })
 
     bananas.children.iterate(function (child) {
@@ -578,9 +609,19 @@ function update ()
         this.physics.add.collider(boss, cannonBalls, cannonBallOnBoss, null, this);
     }
 
+    if (bossActive) {
+        this.physics.add.collider(boss, cannonBalls, cannonBallOnBoss, null, this);
+        let bossSound = this.sound.add('bossLevel');
+        let levelSound = this.sound.add('level');
+        bossSound.play();
+        levelSound.pause();
+    }
+
 }
 
     function collectBanana (player, banana) {
+        let collectSound = this.sound.add('collectSound');
+        collectSound.play();
         banana.disableBody(true, true);
         bananaCount--;
 
@@ -598,12 +639,15 @@ function update ()
 
     function playerOnEnemy(player, enemy) {
         if (!gameOver) {
-            if (player.body.touching.down && player.y < enemy.y) {+
+            if (player.body.touching.down && player.y < enemy.y) {
+                let enemyScream = this.sound.add('enemyScream');
                 player.setVelocityY(-200);
                 player.anims.play('playerJump', true);
-                // enemy.setData('dead', true);
+                enemyScream.play();
                 enemy.disableBody(true, true);
                 enemy.anims.play('enemyDeath', true);
+                score += 100;
+                scoreText.setText('Score: ' + score);
                 const deathAnim = this.add.sprite(enemy.x + enemy.body.width / 2, enemy.y + enemy.body.height / 2, 'enemyDeath');
                 deathAnim.anims.play('enemyDeath', true);
             } else {
@@ -611,6 +655,8 @@ function update ()
                 player.setVelocity(0);
                 player.setTint(0xff0000);
                 player.anims.play('playerDeath');
+                let playerScream = this.sound.add('playerScream');
+                playerScream.play();
                 gameOver = true;
             }
     
@@ -636,21 +682,36 @@ function update ()
     }
 
 function shootCannon(player) {
-    let bomb = cannonBalls.create(player.x - 20, player.y + 20, 'cannonball');
+
+    let bomb = cannonBalls.create(player.x - 20, player.y + 15, 'cannonball');
     bomb.setCollideWorldBounds(true);
     bomb.setVelocity(-100);
     if (facingLeft) {
         bomb.setVelocityX(-400);
-        // player.setVelocityX(100);
         player.setVelocityY(-50);
     } else {
         bomb.setVelocityX(400);
-        // player.setVelocityX(-100);
         player.setVelocityY(-50);
+    }
+    if (hasDoubleShot) {
+        let bomb2 = cannonBalls.create(player.x - 20, player.y - 20, 'cannonball');
+        bomb2.setCollideWorldBounds(true);
+        bomb2.setVelocity(-100);
+        if (facingLeft) {
+            bomb2.setVelocityX(-400);
+            player.setVelocityY(-150);
+        } else {
+            bomb2.setVelocityX(400);
+            player.setVelocityY(-150);
+        }
     }
 }
 
 function cannonOnEnemy(enemy, cannonBall) {
+    let explosionSound = this.sound.add('explosionSound');
+    explosionSound.play();
+    score += 100;
+    scoreText.setText('Score: ' + score);
     enemy.setVelocity(0);
     const explosion = this.add.sprite(enemy.x, enemy.y, 'explosion');
     explosion.anims.play('explosion', true);
@@ -745,7 +806,7 @@ function populateEnemies(scene) {
             } else {
                 directionLeft = true;
             }
-            child.setBounceY(0.1);
+            // child.setBounceY(0.1);
             let randomTime = Math.floor(Math.random() * 1000) + 1000;
             let enemyInterval = setInterval(function () {
                 let speed = Math.floor(Math.random() * 150) + 100;
@@ -772,17 +833,24 @@ function clearIntervalAllEnemies() {
         if (enemyInterval) {
             clearInterval(enemyInterval);
             child.setData('enemyInterval', null);
-            child.anims.play('enemyTaunt', true)
+            child.anims.play('enemyTaunt', true);
         }
     });
 }
 
 function cannonBallOnBoss(cannonball, scene) {
+    let explosionSound = this.sound.add('explosionSound');
+    explosionSound.play();
     cannonBalls.children.iterate(function (child) {
             child.disableBody(true, true)
     });
     if (bossDown == false) {
         if (bossHealth <= 0) {
+            let winSound = this.sound.add('win');
+            bossSound.pause();
+            winSound.play();
+            score += 1000;
+            scoreText.setText('Score: ' + score);
             let bossInterval = boss.getData('bossInterval');
             clearInterval(bossInterval);
             boss.anims.play('bossDeath', true);
@@ -865,6 +933,8 @@ function playerOnBoss(scene) {
         player.setVelocity(0);
         player.setTint(0xff0000);
         player.anims.play('playerDeath');
+        let playerScream = this.sound.add('playerScream');
+        playerScream.play();
         gameOver = true;
         boss.setVelocityX(0);
         boss.anims.play('bossIdle', true);
