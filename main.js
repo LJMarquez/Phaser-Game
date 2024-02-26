@@ -48,6 +48,8 @@ let bossInterval;
 let directionLeftBoss;
 let hasDoubleShot = false;
 let powerUpSoundPlayed = false;
+let levelSoundCreated = false;
+let levelSoundStopped = false;
 
 function preload ()
 {
@@ -362,26 +364,14 @@ function create ()
         frameRate: 20
     });
     let titleSound = this.sound.add('title');
-    let levelSound = this.sound.add('level');
-
-    levelSound.play();
 
     cursors = this.input.keyboard.createCursorKeys();
 
     bananas = this.physics.add.group({
         key: 'spin',
         repeat: 11,
-        // setXY: { x: 12, y: 0, stepX: 70 }
         setXY: { x: 20, stepX: game.config.width / 11}
     });
-
-
-    // bananas = this.physics.add.group();
-
-    // for (let i = 0; i < 12; i++) {
-    //     let banana = bananas.create(Phaser.Math.Between(12, 800), Phaser.Math.Between(0, 400), 'banana');
-    //     banana.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-    // }
 
     bananas.children.iterate(function (child) {
         child.setBounceY(Phaser.Math.FloatBetween(0.1, 0.3));
@@ -400,22 +390,17 @@ function create ()
     
     this.physics.add.overlap(player, bananas, collectBanana, null, this);
 
-
-    // this.physics.add.overlap(player, enemies, collectStar, null, this);
-
     this.physics.add.collider(enemies, cannonBalls, cannonOnEnemy, null, this);
-
-
 
     this.physics.add.collider(player, enemies, playerOnEnemy, null, this);
 
     this.physics.add.collider(cannonBalls, platforms, destroyCannonBall, null, this);
 
-
 }
 
 function update ()
 {
+
     if (gameWin == false) {
         if (gameOver == false) {
             if (facingLeft) {
@@ -546,7 +531,20 @@ function update ()
                 }
             }
 
+            // if (!levelSoundCreated) {
+            //     levelSoundCreated = true;
+            //     let levelSound = this.sound.add('level');
+            //     levelSound.play({volume: 1.5});
+            // }
+
+            // if (levelSoundStopped) {
+            //     levelSoundStopped = false;
+            //     levelSound.pause();
+            // }
+
             if (bossActive) {
+                levelSoundStopped = true;
+
                 if (boss.x + boss.body.width >= game.config.width) {
                     boss.setVelocityX(-150);
                     boss.setFlipX(true);
@@ -609,14 +607,6 @@ function update ()
         this.physics.add.collider(boss, cannonBalls, cannonBallOnBoss, null, this);
     }
 
-    if (bossActive) {
-        this.physics.add.collider(boss, cannonBalls, cannonBallOnBoss, null, this);
-        let bossSound = this.sound.add('bossLevel');
-        let levelSound = this.sound.add('level');
-        bossSound.play();
-        levelSound.pause();
-    }
-
 }
 
     function collectBanana (player, banana) {
@@ -656,7 +646,7 @@ function update ()
                 player.setTint(0xff0000);
                 player.anims.play('playerDeath');
                 let playerScream = this.sound.add('playerScream');
-                playerScream.play();
+                playerScream.play({volume: 0.1});
                 gameOver = true;
             }
     
@@ -734,8 +724,9 @@ function destroyCannonBall(cannonBall, platform) {
 }
 
 function populateEnemies(scene) {
-     if (enemyCount == 5) {
+     if (enemyCount == 1) {
         bossActive = true;
+        playBossAudio(scene);
         platforms.children.iterate(function (child) {
             child.disableBody(true, true);
         })
@@ -769,7 +760,6 @@ function populateEnemies(scene) {
                     boss.setVelocityY(-250);
                 }
                 let speed = Math.floor(Math.random() * 200) + 200;
-                // directionLeftBoss = !directionLeftBoss;
                 boss.setVelocityX(speed);
                 if (player.x < boss.x) {
                     boss.setVelocityX(-speed);
@@ -797,7 +787,6 @@ function populateEnemies(scene) {
             child.setOrigin(0, 0);
             child.setSize(child.body.width, child.body.height + 20);
             child.anims.play('enemyWalk', true);
-            // child.setData('dead', false);
 
             let directionLeft;
             let directionBool = Math.floor(Math.random() * 2);
@@ -806,7 +795,6 @@ function populateEnemies(scene) {
             } else {
                 directionLeft = true;
             }
-            // child.setBounceY(0.1);
             let randomTime = Math.floor(Math.random() * 1000) + 1000;
             let enemyInterval = setInterval(function () {
                 let speed = Math.floor(Math.random() * 150) + 100;
@@ -901,7 +889,6 @@ function cannonBallOnBoss(cannonball, scene) {
                                 boss.setVelocityY(-250);
                             }
                             let speed = Math.floor(Math.random() * 200) + 200;
-                            // directionLeftBoss = !directionLeftBoss;
                             if (player.x < boss.x) {
                                 boss.setVelocityX(-speed);
                                 directionLeftBoss = true;
@@ -934,10 +921,15 @@ function playerOnBoss(scene) {
         player.setTint(0xff0000);
         player.anims.play('playerDeath');
         let playerScream = this.sound.add('playerScream');
-        playerScream.play();
+        playerScream.play({volume: 0.1});
         gameOver = true;
         boss.setVelocityX(0);
         boss.anims.play('bossIdle', true);
         clearInterval(bossInterval);
     }
+}
+
+function playBossAudio(scene) {
+    let bossSound = scene.sound.add('bossLevel');
+    bossSound.play({volume: 0.4});
 }
