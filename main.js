@@ -42,14 +42,20 @@ let isGroundPounding = false;
 let isShooting = false;
 let bossActive = false;
 let loseText;
-let bossHealth = 3;
+let bossHealth = 1;
 let bossDown = true;
 let bossInterval;
 let directionLeftBoss;
 let hasDoubleShot = false;
 let powerUpSoundPlayed = false;
-let levelSoundCreated = false;
-let levelSoundStopped = false;
+let levelSound;
+let bossSound;
+let winSound;
+let playerScream;
+let timer;
+let elapsedTime = 0;
+let timeText;
+let paused = false;
 
 function preload ()
 {
@@ -363,6 +369,18 @@ function create ()
         frames: this.anims.generateFrameNumbers('cannonball', { frame: 0}),
         frameRate: 20
     });
+
+
+    timer = this.time.addEvent({
+        delay: 10,
+        callback: updateTimer,
+        callbackScope: this,
+        loop: true
+    });
+    // timeText = this.add.text(16, 50, 'Time: 0 seconds', { fontSize: '32px', fill: '#fff' });
+    timeText = this.add.text(16, 50, 'Time: 0.000 seconds', { fontSize: '32px', fill: '#fff' });
+
+
     let titleSound = this.sound.add('title');
 
     cursors = this.input.keyboard.createCursorKeys();
@@ -395,6 +413,14 @@ function create ()
     this.physics.add.collider(player, enemies, playerOnEnemy, null, this);
 
     this.physics.add.collider(cannonBalls, platforms, destroyCannonBall, null, this);
+
+    levelSound = this.sound.add('level');
+    levelSound.play({volume: 1.5});
+
+    bossSound = this.sound.add('bossLevel');
+    winSound = this.sound.add('win');
+    playerScream = this.sound.add('playerScream');
+    console.log(sessionStorage.getItem('highScore'));
 
 }
 
@@ -531,17 +557,6 @@ function update ()
                 }
             }
 
-            // if (!levelSoundCreated) {
-            //     levelSoundCreated = true;
-            //     let levelSound = this.sound.add('level');
-            //     levelSound.play({volume: 1.5});
-            // }
-
-            // if (levelSoundStopped) {
-            //     levelSoundStopped = false;
-            //     levelSound.pause();
-            // }
-
             if (bossActive) {
                 levelSoundStopped = true;
 
@@ -569,10 +584,15 @@ function update ()
                 }
             }
 
+            
         }
-
+        
     }
 
+    if (!paused) {
+        updateTimer();
+    }
+    
     enemies.children.iterate(function (child) {
         if (child.x + 70 >= game.config.width) {
             child.setVelocityX(-150);
@@ -641,12 +661,14 @@ function update ()
                 const deathAnim = this.add.sprite(enemy.x + enemy.body.width / 2, enemy.y + enemy.body.height / 2, 'enemyDeath');
                 deathAnim.anims.play('enemyDeath', true);
             } else {
+                stopTimer();
                 clearIntervalAllEnemies();
                 player.setVelocity(0);
                 player.setTint(0xff0000);
                 player.anims.play('playerDeath');
+                levelSound.pause();
                 let playerScream = this.sound.add('playerScream');
-                playerScream.play({volume: 0.1});
+                playerScream.play({volume: 0.5});
                 gameOver = true;
             }
     
@@ -724,9 +746,10 @@ function destroyCannonBall(cannonBall, platform) {
 }
 
 function populateEnemies(scene) {
-     if (enemyCount == 1) {
+     if (enemyCount == 2) {
         bossActive = true;
-        playBossAudio(scene);
+        bossSound.play({volume: 0.4});
+        levelSound.pause();
         platforms.children.iterate(function (child) {
             child.disableBody(true, true);
         })
@@ -834,7 +857,19 @@ function cannonBallOnBoss(cannonball, scene) {
     });
     if (bossDown == false) {
         if (bossHealth <= 0) {
-            let winSound = this.sound.add('win');
+            stopTimer();
+            if (sessionStorage.getItem('highScore') == null) {
+                timeText.setText(`New High Score: ${elapsedTime.toFixed(3)}`);
+                sessionStorage.setItem('highScore', elapsedTime.toFixed(3));
+            } else {
+                if (elapsedTime.toFixed(3) < localStorage.getItem('highScore')) {
+                  timeText.setText(`Score: ${elapsedTime.toFixed(3)}`);
+                } else {
+                    timeText.setText(`New High Score: ${elapsedTime.toFixed(3)}`);
+                    sessionStorage.setItem('highScore', elapsedTime.toFixed(3));
+                }
+            }
+            // console.log('Timer paused. Elapsed time at pause: ' + elapsedTime.toFixed(3) + ' seconds');
             bossSound.pause();
             winSound.play();
             score += 1000;
@@ -916,11 +951,11 @@ function cannonBallOnBoss(cannonball, scene) {
 
 function playerOnBoss(scene) {
     if (bossHealth > 0) {
+        stopTimer();
         let bossInterval = boss.getData('bossInterval');
         player.setVelocity(0);
         player.setTint(0xff0000);
         player.anims.play('playerDeath');
-        let playerScream = this.sound.add('playerScream');
         playerScream.play({volume: 0.1});
         gameOver = true;
         boss.setVelocityX(0);
@@ -929,7 +964,14 @@ function playerOnBoss(scene) {
     }
 }
 
-function playBossAudio(scene) {
-    let bossSound = scene.sound.add('bossLevel');
-    bossSound.play({volume: 0.4});
+function updateTimer() {
+    elapsedTime += 0.01;
+    timeText.setText('Time: ' + elapsedTime.toFixed(3) + ' seconds');
+}
+
+function stopTimer() {
+    timer.paused = true;
+    paused = true;
+    
+    console.log('Timer paused. Elapsed time at pause: ' + elapsedTime.toFixed(3) + ' seconds');
 }
