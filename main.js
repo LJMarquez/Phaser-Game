@@ -20,15 +20,15 @@ var config = {
     }
 };
 
-var game = new Phaser.Game(config);
-var platforms;
-var score = 0;
-var scoreText;
-var winText;
-var cannonBalls;
-var cursors;
+let game = new Phaser.Game(config);
+let platforms;
+let score = 0;
+let scoreText;
+let winText;
+let cannonBalls;
+let cursors;
 let blunderBuss;
-var gameOver = false;
+let gameOver = false;
 let gameWin = false;
 let enemyCount = 0;
 let jumped = false;
@@ -42,7 +42,7 @@ let isGroundPounding = false;
 let isShooting = false;
 let bossActive = false;
 let loseText;
-let bossHealth = 1;
+let bossHealth = 3;
 let bossDown = true;
 let bossInterval;
 let directionLeftBoss;
@@ -56,6 +56,7 @@ let timer;
 let elapsedTime = 0;
 let timeText;
 let paused = false;
+let scoreFontApplied = false;
 
 function preload ()
 {
@@ -159,12 +160,6 @@ function preload ()
     this.load.audio('level', 'assets/level.mp3');
     this.load.audio('bossLevel', 'assets/boss.mp3');
     this.load.audio('win', 'assets/win.mp3');
-
-
-
-    
-
-
 
 }
 
@@ -378,10 +373,11 @@ function create ()
         loop: true
     });
     // timeText = this.add.text(16, 50, 'Time: 0 seconds', { fontSize: '32px', fill: '#fff' });
-    timeText = this.add.text(16, 50, 'Time: 0.000 seconds', { fontSize: '32px', fill: '#fff' });
+    // timeText = this.add.text(16, 50, 'jungleFont', 'Time: 0.000', { fontSize: '32px', fill: '#fff' });
+    timeText = this.add.text(16, 50, 'Time: 0.000', { fontSize: '32px', fill: '#fff', fontFamily: 'jungleFont' });
+    scoreText = this.add.text(16, 16, `Score: ${score}`, { fontSize: '32px', fill: '#fff', fontFamily: 'jungleFont' });
 
-
-    let titleSound = this.sound.add('title');
+    // let titleSound = this.sound.add('title');
 
     cursors = this.input.keyboard.createCursorKeys();
 
@@ -400,7 +396,6 @@ function create ()
 
     cannonBalls = this.physics.add.group();
     
-    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#fff'});
 
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(bananas, platforms);
@@ -415,7 +410,7 @@ function create ()
     this.physics.add.collider(cannonBalls, platforms, destroyCannonBall, null, this);
 
     levelSound = this.sound.add('level');
-    levelSound.play({volume: 1.5});
+    levelSound.play({volume: 1.75});
 
     bossSound = this.sound.add('bossLevel');
     winSound = this.sound.add('win');
@@ -480,7 +475,7 @@ function update ()
             }
 
             if (cursors.up.isDown && player.body.touching.down) {
-                player.setVelocityY(-350);
+                player.setVelocityY(-300);
                 player.anims.play('playerJump', true);
                 setTimeout(function () {
                     if (isGroundPounding == false && isShooting == false && gameOver == false) {
@@ -746,7 +741,7 @@ function destroyCannonBall(cannonBall, platform) {
 }
 
 function populateEnemies(scene) {
-     if (enemyCount == 2) {
+     if (enemyCount == 6) {
         bossActive = true;
         bossSound.play({volume: 0.4});
         levelSound.pause();
@@ -869,7 +864,6 @@ function cannonBallOnBoss(cannonball, scene) {
                     sessionStorage.setItem('highScore', elapsedTime.toFixed(3));
                 }
             }
-            // console.log('Timer paused. Elapsed time at pause: ' + elapsedTime.toFixed(3) + ' seconds');
             bossSound.pause();
             winSound.play();
             score += 1000;
@@ -887,7 +881,8 @@ function cannonBallOnBoss(cannonball, scene) {
             player.anims.play('playerTaunt1', true);
             player.setVelocityX(0);
             boss.setVelocityX(0);
-            winText = this.add.text(game.config.width / 2, game.config.height / 2, 'YOU WIN', { fontSize: '100px', fill: '#00ff00', backgroundColor: '0x00FF00', padding: { x: 20, y: 10 }});
+            winText = this.add.text(game.config.width / 2 - 100, game.config.height / 2 - 50, 'YOU WIN', { fontSize: '100px', fontFamily: 'jungleFont', fill: '#00ff00', backgroundColor: '0x00FF00', padding: { x: 20, y: 10 }});
+            winText.setOrigin(0, 0);
         } else {
             let bossInterval = boss.getData('bossInterval');
             clearInterval(bossInterval);
@@ -966,12 +961,10 @@ function playerOnBoss(scene) {
 
 function updateTimer() {
     elapsedTime += 0.01;
-    timeText.setText('Time: ' + elapsedTime.toFixed(3) + ' seconds');
+    timeText.setText('Time: ' + elapsedTime.toFixed(3));
 }
 
 function stopTimer() {
     timer.paused = true;
     paused = true;
-    
-    console.log('Timer paused. Elapsed time at pause: ' + elapsedTime.toFixed(3) + ' seconds');
 }
